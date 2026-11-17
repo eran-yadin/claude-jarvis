@@ -1,0 +1,10 @@
+# secrets and personal data never go in git
+jarvis-data/secrets.env
+jarvis-data/history.sqlite
+jarvis-data/memory/*
+!jarvis-data/memory/.gitkeep
+jarvis-data/logs/
+
+.venv/
+__pycache__/
+*.pyc

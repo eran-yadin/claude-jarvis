@@ -1,0 +1,13 @@
+[project]
+name = "claude-jarvis"
+version = "0.1.0"
+description = "Jarvis-style voice assistant built on Claude"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic",
+    "fastapi",
+    "uvicorn[standard]",
+    "websockets",
+    "pyyaml",
+    "python-dotenv",
+]
