@@ -4,6 +4,7 @@ Run: uv run python -m client.terminal
 """
 import asyncio
 import os
+import sys
 from pathlib import Path
 
 import websockets
@@ -16,12 +17,24 @@ TOKEN = os.environ.get("JARVIS_TOKEN", "")
 
 
 async def main():
-    # TODO 1: connect with websockets.connect(BRAIN_URL ...) and pass TOKEN
-    #         the same way brain/main.py expects it
-    # TODO 2: loop: read a line (hint: await asyncio.to_thread(input, "you> ")),
-    #         send it, await the reply, print it. empty line or Ctrl-C quits.
-    raise NotImplementedError
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+    try:
+        async with websockets.connect(BRAIN_URL, additional_headers=headers) as conn:
+            print("connected to Jarvis. empty line or Ctrl-C to quit.")
+            while True:
+                line = (await asyncio.to_thread(input, "you> ")).strip()
+                if not line:
+                    break
+                await conn.send(line)
+                print("jarvis>", await conn.recv())
+    except websockets.ConnectionClosed as e:
+        sys.exit(f"brain closed the connection: {e.rcvd.code if e.rcvd else ''} {e.rcvd.reason if e.rcvd else ''}")
+    except OSError as e:
+        sys.exit(f"can't reach the brain at {BRAIN_URL}: {e}")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, EOFError):
+        print()

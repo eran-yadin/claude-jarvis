@@ -5,6 +5,8 @@ Claude for a local model later = a second class here + one line in config.yaml.
 """
 from dataclasses import dataclass, field
 
+import anthropic
+
 from .config import ANTHROPIC_API_KEY, CONFIG
 
 
@@ -19,18 +21,31 @@ class LLMReply:
 
 class AnthropicLLM:
     def __init__(self):
-        # TODO: create the anthropic client with ANTHROPIC_API_KEY
-        # hint: anthropic.Anthropic(api_key=...)
+        if not ANTHROPIC_API_KEY:
+            raise RuntimeError("ANTHROPIC_API_KEY is empty - put it in jarvis-data/secrets.env")
+        self.client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         self.model = CONFIG["llm"]["model"]
         self.max_tokens = CONFIG["llm"]["max_tokens"]
 
     def chat(self, system: str, messages: list, tools: list) -> LLMReply:
-        # TODO: one call to client.messages.create(model, max_tokens, system, messages, tools)
-        # TODO: walk response.content:
-        #         block.type == "text"     -> add to reply.text
-        #         block.type == "tool_use" -> add {"id", "name", "input"} to reply.tool_calls
-        # TODO: copy response.usage.input_tokens / output_tokens into the reply
-        raise NotImplementedError
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=self.max_tokens,
+            system=system,
+            messages=messages,
+            tools=tools,
+        )
+        reply = LLMReply(raw_content=list(response.content))
+        texts = []
+        for block in response.content:
+            if block.type == "text":
+                texts.append(block.text)
+            elif block.type == "tool_use":
+                reply.tool_calls.append({"id": block.id, "name": block.name, "input": block.input})
+        reply.text = " ".join(t.strip() for t in texts if t.strip())
+        reply.input_tokens = response.usage.input_tokens
+        reply.output_tokens = response.usage.output_tokens
+        return reply
 
 
 def get_llm():

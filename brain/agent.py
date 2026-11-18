@@ -14,19 +14,27 @@ MAX_STEPS = CONFIG["llm"]["max_steps"]
 
 
 class Agent:
-    def __init__(self):
-        self.llm = get_llm()
+    def __init__(self, llm=None):
+        self.llm = llm or get_llm()
         self.messages: list = []   # conversation history for this session
 
     def handle(self, user_text: str) -> str:
         """One spoken command in, one reply to speak out."""
-        # TODO 1: append {"role": "user", "content": user_text} to self.messages
-        # TODO 2: loop at most MAX_STEPS times:
-        #           reply = self.llm.chat(SYSTEM_PROMPT, self.messages, TOOL_SCHEMAS)
-        #           log reply.input_tokens / reply.output_tokens  (cost per call)
-        #           append the assistant turn (reply.raw_content) to self.messages
-        #           no tool calls -> return reply.text
-        #           else run each with run_tool(name, input) and append ONE user turn
-        #                holding a {"type": "tool_result", "tool_use_id", "content"} per call
-        # TODO 3: if the loop runs out, return a short "that took too many steps" message
-        raise NotImplementedError
+        self.messages.append({"role": "user", "content": user_text})
+        for step in range(1, MAX_STEPS + 1):
+            reply = self.llm.chat(SYSTEM_PROMPT, self.messages, TOOL_SCHEMAS)
+            log.info("step %d: %d in / %d out tokens, %d tool call(s)",
+                     step, reply.input_tokens, reply.output_tokens, len(reply.tool_calls))
+            self.messages.append({"role": "assistant", "content": reply.raw_content})
+            if not reply.tool_calls:
+                return reply.text or "Done."
+            results = []
+            for call in reply.tool_calls:
+                output = run_tool(call["name"], call["input"])
+                log.info("tool %s -> %s", call["name"], output[:200])
+                results.append({"type": "tool_result", "tool_use_id": call["id"], "content": output})
+            self.messages.append({"role": "user", "content": results})
+        log.warning("hit max_steps (%d)", MAX_STEPS)
+        # history ends on tool results; close the turn so the next command starts clean
+        self.messages.append({"role": "assistant", "content": "I stopped there, it took too many steps."})
+        return "Sorry, that took too many steps, so I stopped."

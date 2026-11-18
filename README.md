@@ -23,6 +23,12 @@ uv run uvicorn brain.main:app --host 127.0.0.1 --port 8765   # terminal 1
 uv run python -m client.terminal                             # terminal 2
 ```
 
+## offline test (fake model, no key, no cost)
+
+```sh
+uv run python -m tests.test_text_loop
+```
+
 ## job 1 is done when
 
 Typing "what time is it" gets an answer that used the `get_time` tool.

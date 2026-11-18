@@ -8,3 +8,4 @@ jarvis-data/logs/
 .venv/
 __pycache__/
 *.pyc
+*.egg-info/
